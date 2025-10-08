@@ -1,0 +1,119 @@
+openapi: 3.1.0
+info:
+  title: User Service
+  version: 1.0.0
+  description: API for managing users.
+servers:
+  - url: http://localhost:42873
+paths:
+  /users:
+    get:
+      operationId: listUsers
+      description: Returns all users.
+      responses:
+        '200':
+          description: Successful response with the list of users.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/User'
+    post:
+      operationId: createUser
+      description: Creates a new user.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewUser'
+      responses:
+        '201':
+          description: User created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+  /users/{id}:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        description: Unique user identifier.
+        schema:
+          type: string
+          format: uuid
+    get:
+      operationId: getUser
+      description: Returns a user by identifier.
+      responses:
+        '200':
+          description: User found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '404':
+          description: User not found.
+    put:
+      operationId: updateUser
+      description: Updates user data.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateUser'
+      responses:
+        '200':
+          description: User updated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '404':
+          description: User not found.
+    delete:
+      operationId: deleteUser
+      description: Deletes a user.
+      responses:
+        '204':
+          description: User deleted.
+        '404':
+          description: User not found.
+components:
+  schemas:
+    User:
+      type: object
+      required: [id, name, username]
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique user identifier.
+        name:
+          type: string
+          description: Full user name.
+        username:
+          type: string
+          description: Unique username.
+    NewUser:
+      type: object
+      required: [name, username]
+      properties:
+        name:
+          type: string
+          description: Full user name.
+        username:
+          type: string
+          description: Unique username.
+    UpdateUser:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Full user name.
+        username:
+          type: string
+          description: Unique username.
