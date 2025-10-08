@@ -126,7 +126,7 @@ func (s *Server) handleCreateUserRequest(args [0]string, argsEscaped bool, w htt
 		mreq := middleware.Request{
 			Context:          ctx,
 			OperationName:    CreateUserOperation,
-			OperationSummary: "",
+			OperationSummary: "Create user",
 			OperationID:      "createUser",
 			Body:             request,
 			RawBody:          rawBody,
@@ -262,7 +262,7 @@ func (s *Server) handleDeleteUserRequest(args [1]string, argsEscaped bool, w htt
 		mreq := middleware.Request{
 			Context:          ctx,
 			OperationName:    DeleteUserOperation,
-			OperationSummary: "",
+			OperationSummary: "Delete user",
 			OperationID:      "deleteUser",
 			Body:             nil,
 			RawBody:          rawBody,
@@ -403,7 +403,7 @@ func (s *Server) handleGetUserRequest(args [1]string, argsEscaped bool, w http.R
 		mreq := middleware.Request{
 			Context:          ctx,
 			OperationName:    GetUserOperation,
-			OperationSummary: "",
+			OperationSummary: "Get user",
 			OperationID:      "getUser",
 			Body:             nil,
 			RawBody:          rawBody,
@@ -530,7 +530,7 @@ func (s *Server) handleListUsersRequest(args [0]string, argsEscaped bool, w http
 		mreq := middleware.Request{
 			Context:          ctx,
 			OperationName:    ListUsersOperation,
-			OperationSummary: "",
+			OperationSummary: "List users",
 			OperationID:      "listUsers",
 			Body:             nil,
 			RawBody:          rawBody,
@@ -681,7 +681,7 @@ func (s *Server) handleUpdateUserRequest(args [1]string, argsEscaped bool, w htt
 		mreq := middleware.Request{
 			Context:          ctx,
 			OperationName:    UpdateUserOperation,
-			OperationSummary: "",
+			OperationSummary: "Update user",
 			OperationID:      "updateUser",
 			Body:             request,
 			RawBody:          rawBody,

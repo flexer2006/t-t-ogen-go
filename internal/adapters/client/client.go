@@ -1,11 +1,9 @@
-// Package client provides the API client adapter.
 package client
 
 import (
 	"context"
-	"errors"
-	"fmt"
 
+	xerrors "github.com/go-faster/errors"
 	"github.com/google/uuid"
 
 	api "github.com/flexer2006/t-t-ogen-go/generated"
@@ -13,9 +11,9 @@ import (
 	"github.com/flexer2006/t-t-ogen-go/internal/ports"
 )
 
-var ErrNilInvoker = errors.New("nil invoker")
+var ErrNilInvoker = xerrors.New("nil invoker")
 
-var errUnexpectedResponse = errors.New("unexpected response type")
+var errUnexpectedResponse = xerrors.New("unexpected response type")
 
 type Client struct {
 	invoker api.Invoker
@@ -34,7 +32,7 @@ func New(invoker api.Invoker) (*Client, error) {
 func (c *Client) ListUsers(ctx context.Context) ([]domain.User, error) {
 	users, err := c.invoker.ListUsers(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("Client.ListUsers: %w", err)
+		return nil, xerrors.Wrap(err, "client.Client.ListUsers")
 	}
 
 	result := make([]domain.User, len(users))
@@ -52,7 +50,7 @@ func (c *Client) CreateUser(ctx context.Context, name, username string) (domain.
 		Username: username,
 	})
 	if err != nil {
-		return domain.User{}, fmt.Errorf("Client.CreateUser: %w", err)
+		return domain.User{}, xerrors.Wrap(err, "client.Client.CreateUser")
 	}
 
 	return toDomainUser(*resp), nil
@@ -61,7 +59,7 @@ func (c *Client) CreateUser(ctx context.Context, name, username string) (domain.
 func (c *Client) GetUser(ctx context.Context, id uuid.UUID) (domain.User, error) {
 	resp, err := c.invoker.GetUser(ctx, api.GetUserParams{ID: id})
 	if err != nil {
-		return domain.User{}, fmt.Errorf("Client.GetUser: %w", err)
+		return domain.User{}, xerrors.Wrap(err, "client.Client.GetUser")
 	}
 
 	switch result := resp.(type) {
@@ -70,29 +68,24 @@ func (c *Client) GetUser(ctx context.Context, id uuid.UUID) (domain.User, error)
 	case *api.GetUserNotFound:
 		return domain.User{}, ports.ErrUserNotFound
 	default:
-		return domain.User{}, fmt.Errorf("Client.GetUser: %w (%T)", errUnexpectedResponse, result)
+		return domain.User{}, xerrors.Wrapf(errUnexpectedResponse, "client.Client.GetUser: %T", result)
 	}
 }
 
-func (c *Client) UpdateUser(
-	ctx context.Context,
-	userID uuid.UUID,
-	name *string,
-	username *string,
-) (domain.User, error) {
+func (c *Client) UpdateUser(ctx context.Context, userID uuid.UUID, name *string, username *string) (domain.User, error) {
 	var payload api.UpdateUser
 
 	if name != nil {
-		payload.Name.SetTo(*name)
+		payload.Name = api.NewOptString(*name)
 	}
 
 	if username != nil {
-		payload.Username.SetTo(*username)
+		payload.Username = api.NewOptString(*username)
 	}
 
 	resp, err := c.invoker.UpdateUser(ctx, &payload, api.UpdateUserParams{ID: userID})
 	if err != nil {
-		return domain.User{}, fmt.Errorf("Client.UpdateUser: %w", err)
+		return domain.User{}, xerrors.Wrap(err, "client.Client.UpdateUser")
 	}
 
 	switch result := resp.(type) {
@@ -101,14 +94,14 @@ func (c *Client) UpdateUser(
 	case *api.UpdateUserNotFound:
 		return domain.User{}, ports.ErrUserNotFound
 	default:
-		return domain.User{}, fmt.Errorf("Client.UpdateUser: %w (%T)", errUnexpectedResponse, result)
+		return domain.User{}, xerrors.Wrapf(errUnexpectedResponse, "client.Client.UpdateUser: %T", result)
 	}
 }
 
 func (c *Client) DeleteUser(ctx context.Context, id uuid.UUID) error {
 	resp, err := c.invoker.DeleteUser(ctx, api.DeleteUserParams{ID: id})
 	if err != nil {
-		return fmt.Errorf("Client.DeleteUser: %w", err)
+		return xerrors.Wrap(err, "client.Client.DeleteUser")
 	}
 
 	switch result := resp.(type) {
@@ -117,7 +110,7 @@ func (c *Client) DeleteUser(ctx context.Context, id uuid.UUID) error {
 	case *api.DeleteUserNotFound:
 		return ports.ErrUserNotFound
 	default:
-		return fmt.Errorf("Client.DeleteUser: %w (%T)", errUnexpectedResponse, result)
+		return xerrors.Wrapf(errUnexpectedResponse, "client.Client.DeleteUser: %T", result)
 	}
 }
 

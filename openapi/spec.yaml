@@ -8,6 +8,7 @@ servers:
 paths:
   /users:
     get:
+      summary: List users
       operationId: listUsers
       description: Returns all users.
       responses:
@@ -20,6 +21,7 @@ paths:
                 items:
                   $ref: '#/components/schemas/User'
     post:
+      summary: Create user
       operationId: createUser
       description: Creates a new user.
       requestBody:
@@ -45,6 +47,7 @@ paths:
           type: string
           format: uuid
     get:
+      summary: Get user
       operationId: getUser
       description: Returns a user by identifier.
       responses:
@@ -57,6 +60,7 @@ paths:
         '404':
           description: User not found.
     put:
+      summary: Update user
       operationId: updateUser
       description: Updates user data.
       requestBody:
@@ -75,6 +79,7 @@ paths:
         '404':
           description: User not found.
     delete:
+      summary: Delete user
       operationId: deleteUser
       description: Deletes a user.
       responses:

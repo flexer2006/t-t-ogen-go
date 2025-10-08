@@ -3,9 +3,11 @@ package app
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net/http"
+	"strings"
 	"time"
+
+	xerrors "github.com/go-faster/errors"
 
 	api "github.com/flexer2006/t-t-ogen-go/generated"
 	clientadapter "github.com/flexer2006/t-t-ogen-go/internal/adapters/client"
@@ -24,7 +26,8 @@ const (
 )
 
 type Application struct {
-	server *http.Server
+	server  *http.Server
+	baseURL string
 }
 
 func NewApplication(addr string) (*Application, error) {
@@ -32,84 +35,96 @@ func NewApplication(addr string) (*Application, error) {
 		addr = defaultAddress
 	}
 
-	storage := data.NewInMemoryUserStorage()
+	repo := data.NewInMemoryUserStorage()
 
-	service, err := newUserService(storage)
+	service, err := newUserService(repo)
 	if err != nil {
-		return nil, fmt.Errorf("NewApplication: %w", err)
+		return nil, xerrors.Wrap(err, "app.NewApplication: user service")
 	}
 
 	handler, err := serveradapter.NewUserHandler(service)
 	if err != nil {
-		return nil, fmt.Errorf("NewApplication: %w", err)
+		return nil, xerrors.Wrap(err, "app.NewApplication: handler")
 	}
 
 	httpHandler, err := api.NewServer(handler)
 	if err != nil {
-		return nil, fmt.Errorf("NewApplication: %w", err)
+		return nil, xerrors.Wrap(err, "app.NewApplication: http server")
 	}
 
-	server := new(http.Server)
-	server.Addr = addr
-	server.Handler = httpHandler
-	server.ReadTimeout = serverReadTimeout
-	server.WriteTimeout = serverWriteTimeout
-	server.IdleTimeout = serverIdleTimeout
-	server.ReadHeaderTimeout = serverReadHeaderTimeout
-	server.MaxHeaderBytes = serverMaxHeaderBytes
+	server := &http.Server{
+		Addr:              addr,
+		Handler:           httpHandler,
+		ReadTimeout:       serverReadTimeout,
+		WriteTimeout:      serverWriteTimeout,
+		IdleTimeout:       serverIdleTimeout,
+		ReadHeaderTimeout: serverReadHeaderTimeout,
+		MaxHeaderBytes:    serverMaxHeaderBytes,
+	}
 
-	return &Application{server: server}, nil
+	return &Application{
+		server:  server,
+		baseURL: inferBaseURL(server.Addr),
+	}, nil
 }
 
 func NewClient(baseURL string) (*clientadapter.Client, error) {
 	invoker, err := api.NewClient(baseURL)
 	if err != nil {
-		return nil, fmt.Errorf("NewClient: %w", err)
+		return nil, xerrors.Wrap(err, "app.NewClient: invoker")
 	}
 
 	client, err := clientadapter.New(invoker)
 	if err != nil {
-		return nil, fmt.Errorf("NewClient: %w", err)
+		return nil, xerrors.Wrap(err, "app.NewClient: adapter")
 	}
 
 	return client, nil
+}
+
+func (a *Application) Client() (*clientadapter.Client, error) {
+	return NewClient(a.baseURL)
 }
 
 func (a *Application) Run(ctx context.Context) error {
 	serverErrors := make(chan error, 1)
 
 	go func() {
-		err := a.server.ListenAndServe()
-		if err != nil && !errors.Is(err, http.ErrServerClosed) {
-			serverErrors <- fmt.Errorf("listen: %w", err)
-
+		if err := a.server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			serverErrors <- xerrors.Wrap(err, "app.Application.Run: listen")
 			return
 		}
 
-		serverErrors <- err
+		serverErrors <- nil
 	}()
 
 	select {
 	case err := <-serverErrors:
-		if err != nil && !errors.Is(err, http.ErrServerClosed) {
-			return err
-		}
-
-		return nil
+		return err
 	case <-ctx.Done():
 		shutdownCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), shutdownTimeout)
 		defer cancel()
 
-		shutdownErr := a.server.Shutdown(shutdownCtx)
-		if shutdownErr != nil {
-			return fmt.Errorf("shutdown: %w", shutdownErr)
+		if err := a.server.Shutdown(shutdownCtx); err != nil {
+			return xerrors.Wrap(err, "app.Application.Run: shutdown")
 		}
 
-		serverErr := <-serverErrors
-		if serverErr != nil && !errors.Is(serverErr, http.ErrServerClosed) {
-			return serverErr
-		}
-
-		return nil
+		return <-serverErrors
 	}
+}
+
+func inferBaseURL(addr string) string {
+	if addr == "" {
+		return ""
+	}
+
+	if strings.HasPrefix(addr, ":") {
+		return "http://localhost" + addr
+	}
+
+	if strings.HasPrefix(addr, "http://") || strings.HasPrefix(addr, "https://") {
+		return addr
+	}
+
+	return "http://" + addr
 }

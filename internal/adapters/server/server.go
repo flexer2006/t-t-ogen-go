@@ -1,19 +1,19 @@
-// Package server provides HTTP handlers for the user service.
 package server
 
 import (
 	"context"
 	"errors"
-	"fmt"
+
+	xerrors "github.com/go-faster/errors"
 
 	api "github.com/flexer2006/t-t-ogen-go/generated"
 	"github.com/flexer2006/t-t-ogen-go/internal/domain"
 	"github.com/flexer2006/t-t-ogen-go/internal/ports"
 )
 
-var ErrNilUserService = errors.New("nil user service")
+var ErrNilUserService = xerrors.New("nil user service")
 
-var errNilRequest = errors.New("nil request")
+var errNilRequest = xerrors.New("nil request")
 
 type UserHandler struct {
 	service ports.UserService
@@ -32,7 +32,7 @@ func NewUserHandler(service ports.UserService) (*UserHandler, error) {
 func (h *UserHandler) ListUsers(ctx context.Context) ([]api.User, error) {
 	users, err := h.service.ListUsers(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("UserHandler.ListUsers: %w", err)
+		return nil, xerrors.Wrap(err, "server.UserHandler.ListUsers")
 	}
 
 	result := make([]api.User, len(users))
@@ -51,7 +51,7 @@ func (h *UserHandler) CreateUser(ctx context.Context, req *api.NewUser) (*api.Us
 
 	user, err := h.service.CreateUser(ctx, req.GetName(), req.GetUsername())
 	if err != nil {
-		return nil, fmt.Errorf("UserHandler.CreateUser: %w", err)
+		return nil, xerrors.Wrap(err, "server.UserHandler.CreateUser")
 	}
 
 	apiUser := toAPIUser(user)
@@ -66,7 +66,7 @@ func (h *UserHandler) GetUser(ctx context.Context, params api.GetUserParams) (ap
 			return &api.GetUserNotFound{}, nil
 		}
 
-		return nil, fmt.Errorf("UserHandler.GetUser: %w", err)
+		return nil, xerrors.Wrap(err, "server.UserHandler.GetUser")
 	}
 
 	apiUser := toAPIUser(user)
@@ -74,9 +74,7 @@ func (h *UserHandler) GetUser(ctx context.Context, params api.GetUserParams) (ap
 	return &apiUser, nil
 }
 
-func (h *UserHandler) UpdateUser(ctx context.Context,
-	req *api.UpdateUser,
-	params api.UpdateUserParams) (api.UpdateUserRes, error) {
+func (h *UserHandler) UpdateUser(ctx context.Context, req *api.UpdateUser, params api.UpdateUserParams) (api.UpdateUserRes, error) {
 	if req == nil {
 		return nil, errNilRequest
 	}
@@ -90,7 +88,7 @@ func (h *UserHandler) UpdateUser(ctx context.Context,
 			return &api.UpdateUserNotFound{}, nil
 		}
 
-		return nil, fmt.Errorf("UserHandler.UpdateUser: %w", err)
+		return nil, xerrors.Wrap(err, "server.UserHandler.UpdateUser")
 	}
 
 	apiUser := toAPIUser(updated)
@@ -99,13 +97,12 @@ func (h *UserHandler) UpdateUser(ctx context.Context,
 }
 
 func (h *UserHandler) DeleteUser(ctx context.Context, params api.DeleteUserParams) (api.DeleteUserRes, error) {
-	err := h.service.DeleteUser(ctx, params.ID)
-	if err != nil {
+	if err := h.service.DeleteUser(ctx, params.ID); err != nil {
 		if errors.Is(err, ports.ErrUserNotFound) {
 			return &api.DeleteUserNotFound{}, nil
 		}
 
-		return nil, fmt.Errorf("UserHandler.DeleteUser: %w", err)
+		return nil, xerrors.Wrap(err, "server.UserHandler.DeleteUser")
 	}
 
 	return &api.DeleteUserNoContent{}, nil
